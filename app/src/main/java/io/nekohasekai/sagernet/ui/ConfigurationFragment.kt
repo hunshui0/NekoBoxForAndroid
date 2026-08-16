@@ -85,6 +85,7 @@ import io.nekohasekai.sagernet.ktx.showAllowingStateLoss
 import io.nekohasekai.sagernet.ktx.snackbar
 import io.nekohasekai.sagernet.ktx.startFilesForResult
 import io.nekohasekai.sagernet.ktx.tryToShow
+import io.nekohasekai.sagernet.ktx.USER_AGENT
 import io.nekohasekai.sagernet.plugin.PluginManager
 import io.nekohasekai.sagernet.ui.profile.ChainSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.HttpSettingsActivity
@@ -116,15 +117,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.matsuri.nb4a.Protocols
 import moe.matsuri.nb4a.Protocols.getProtocolColor
 import moe.matsuri.nb4a.proxy.anytls.AnyTLSSettingsActivity
 import moe.matsuri.nb4a.proxy.config.ConfigSettingActivity
 import moe.matsuri.nb4a.proxy.shadowtls.ShadowTLSSettingsActivity
 import moe.matsuri.nb4a.ui.ConnectionTestNotification
+import moe.matsuri.nb4a.utils.Util
+import libcore.Libcore
 import okhttp3.internal.closeQuietly
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.URLDecoder
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -501,6 +506,58 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     }
 
+    private fun fetchAirportName(link: String): String? {
+        if (!link.startsWith("http")) return null
+        val client = Libcore.newHttpClient().apply {
+            trySocks5(
+                DataStore.mixedPort,
+                DataStore.mixedInboundUser,
+                DataStore.mixedInboundPass
+            )
+            tryH3Direct()
+            when (DataStore.appTLSVersion) {
+                "1.3" -> restrictedTLS()
+            }
+        }
+        try {
+            val response = client.newRequest().apply {
+                if (DataStore.allowInsecureOnRequest) {
+                    allowInsecure()
+                }
+                setURL(link)
+                setUserAgent(USER_AGENT)
+            }.execute()
+
+            var remoteName = parseContentDisposition(Util.getStringBox(response.getHeader("content-disposition")))
+            if (remoteName.isBlank()) {
+                remoteName = decodeProfileTitle(Util.getStringBox(response.getHeader("profile-title")))
+            }
+            return remoteName.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            Logs.w(e)
+            return null
+        } finally {
+            client.close()
+        }
+    }
+
+    private fun parseContentDisposition(header: String): String {
+        if (header.isBlank()) return ""
+        val decoded = Util.decodeFilename(header).trim()
+        if (decoded.isNotBlank()) return decoded
+        return Regex("filename=\"?([^\";]+)\"?").find(header)?.groupValues?.get(1)?.trim() ?: ""
+    }
+
+    private fun decodeProfileTitle(header: String): String {
+        if (header.isBlank()) return ""
+        val title = header.trim()
+        return try {
+            URLDecoder.decode(title, "UTF-8")
+        } catch (e: Exception) {
+            title
+        }
+    }
+
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.action_scan_qr_code -> {
@@ -522,21 +579,31 @@ class ConfigurationFragment @JvmOverloads constructor(
                             import(proxies)
                         }
                     } catch (e: SubscriptionFoundException) {
-                        onMainDispatcher {
-                            if (e.link.startsWith("sn://")) {
+                        if (e.link.startsWith("sn://")) {
+                            onMainDispatcher {
                                 (requireActivity() as MainActivity).importSubscription(e.link.toUri())
-                            } else {
-                                val subscriptionLink = Uri.parse(e.link).getQueryParameter("url") ?: e.link
+                            }
+                        } else {
+                            val subscriptionUri = Uri.parse(e.link)
+                            val subscriptionLink = subscriptionUri.getQueryParameter("url") ?: e.link
+                            val airportName = subscriptionUri.getQueryParameter("name")?.takeIf { it.isNotBlank() }
+                                ?: withTimeoutOrNull(10_000L) {
+                                    withContext(Dispatchers.IO) { fetchAirportName(subscriptionLink) }
+                                }
 
-                                val group = ProxyGroup(type = GroupType.SUBSCRIPTION)
-                                val subscription = SubscriptionBean()
-                                group.subscription = subscription
-                                subscription.link = subscriptionLink
-                                subscription.autoUpdate = false
-                                group.name = ""
+                            val group = ProxyGroup(type = GroupType.SUBSCRIPTION)
+                            val subscription = SubscriptionBean()
+                            group.subscription = subscription
+                            subscription.link = subscriptionLink
+                            subscription.autoUpdate = false
+                            group.name = airportName ?: ""
+                            onMainDispatcher {
                                 startActivity(Intent(requireContext(), GroupSettingsActivity::class.java).apply {
                                     putExtra(GroupSettingsActivity.EXTRA_FROM_CLIPBOARD, true)
                                     putExtra(GroupSettingsActivity.EXTRA_GROUP_SUBSCRIPTION_LINK, subscriptionLink)
+                                    if (airportName != null) {
+                                        putExtra(GroupSettingsActivity.EXTRA_GROUP_NAME, airportName)
+                                    }
                                 })
                             }
                         }

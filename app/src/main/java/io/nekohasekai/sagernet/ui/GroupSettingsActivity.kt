@@ -266,6 +266,7 @@ class GroupSettingsActivity(
         const val EXTRA_GROUP_ID = "id"
         const val EXTRA_FROM_CLIPBOARD = "fromClipboard"
         const val EXTRA_GROUP_SUBSCRIPTION_LINK = "subscription_link"
+        const val EXTRA_GROUP_NAME = "group_name"
     }
 
     @SuppressLint("CommitTransaction")
@@ -282,16 +283,20 @@ class GroupSettingsActivity(
             val editingId = intent.getLongExtra(EXTRA_GROUP_ID, 0L)
             isFromClipboard = intent.getBooleanExtra(EXTRA_FROM_CLIPBOARD, false)
             val subscriptionLink = intent.getStringExtra(EXTRA_GROUP_SUBSCRIPTION_LINK)
+            val importedGroupName = intent.getStringExtra(EXTRA_GROUP_NAME)
             DataStore.editingId = editingId
             runOnDefaultDispatcher {
                 if (editingId == 0L) {
                     val group = ProxyGroup()
                     group.init()
-                    
+
                     // 如果有订阅链接，设置为订阅类型并填充链接
                     if (!subscriptionLink.isNullOrEmpty()) {
                         DataStore.groupType = GroupType.SUBSCRIPTION
                         DataStore.subscriptionLink = subscriptionLink
+                        if (!importedGroupName.isNullOrBlank()) {
+                            DataStore.groupName = importedGroupName
+                        }
                         DataStore.dirty = true
                     }
                 } else {
