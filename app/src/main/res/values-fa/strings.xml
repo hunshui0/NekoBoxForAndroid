@@ -53,6 +53,10 @@
     <string name="service_mode_proxy">فقط به حالت پراکسی</string>
     <string name="service_mode_vpn" translatable="false">VPN</string>
     <string name="port_proxy">پورت پراکسی</string>
+    <string name="local_proxy_settings">تنظیمات پراکسی محلی</string>
+    <string name="proxy_username">نام کاربری پراکسی</string>
+    <string name="proxy_password">رمز عبور پراکسی</string>
+    <string name="port_out_of_range">محدوده پورت باید 1 تا 65535 باشد</string>
     <string name="port_http">پورت پراکسی HTTP</string>
     <string name="port_transproxy">پورت Transproxy</string>
     <string name="cag_route">تنظیمات مسیردهی</string>
@@ -444,6 +448,8 @@
     <string name="warp_generate">ایجاد پیکربندی</string>
     <string name="generating">در حال ایجاد...</string>
     <string name="tun_implementation">پیاده‌سازی TUN</string>
+    <string name="enable_hev_tun">فعال‌سازی Hev TUN</string>
+    <string name="enable_hev_tun_summary">ایجاد دستگاه TUN با hev-socks5-tunnel</string>
     <string name="destination_override">بازنویسی مقصد</string>
     <string name="destination_override_summary">از دامنه ردیابی‌شده برای بازنویسی آدرس مقصد استفاده کنید، نه فقط برای مسیریابی.</string>
     <string name="resolve_destination">بررسی مقصد</string>

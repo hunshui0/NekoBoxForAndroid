@@ -6,6 +6,10 @@
     <string name="port_transproxy">トランスプロキシポート</string>
     <string name="port_http">HTTPプロキシポート</string>
     <string name="port_proxy">プロキシポート</string>
+    <string name="local_proxy_settings">ローカルプロキシ設定</string>
+    <string name="proxy_username">プロキシユーザー名</string>
+    <string name="proxy_password">プロキシパスワード</string>
+    <string name="port_out_of_range">ポートは1～65535の範囲で指定してください</string>
     <string name="service_mode_proxy">プロキシのみ</string>
     <string name="service_mode">サービスモード</string>
     <string name="group_duplicate">複製：
@@ -415,6 +419,8 @@
     <string name="warp_generate">設定を生成</string>
     <string name="generating">生成中…</string>
     <string name="tun_implementation">TUN 実装</string>
+    <string name="enable_hev_tun">Hev TUN を有効化</string>
+    <string name="enable_hev_tun_summary">hev-socks5-tunnel で TUN デバイスを作成</string>
     <string name="destination_override">宛先を上書き</string>
     <string name="destination_override_summary">スニッフィングしたドメインを使って宛先アドレスを上書きします (ルーティングだけでなく)</string>
     <string name="resolve_destination">宛先を解決</string>

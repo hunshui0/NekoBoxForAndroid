@@ -16,6 +16,7 @@ import io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.ui.VpnRequestActivity
 import io.nekohasekai.sagernet.utils.Subnet
+import moe.matsuri.nb4a.hevtun.HevTunRuntime
 import android.net.VpnService as BaseVpnService
 
 class VpnService : BaseVpnService(),
@@ -40,6 +41,11 @@ class VpnService : BaseVpnService(),
     override suspend fun startProcesses() {
         DataStore.vpnService = this
         super.startProcesses() // launch proxy instance
+
+        if (DataStore.enableHevTun) {
+            val tunFd = establishTun()
+            HevTunRuntime.start(this, tunFd)
+        }
     }
 
     override var wakeLock: PowerManager.WakeLock? = null
@@ -52,6 +58,7 @@ class VpnService : BaseVpnService(),
 
     @Suppress("EXPERIMENTAL_API_USAGE")
     override fun killProcesses() {
+        HevTunRuntime.stop()
         conn?.close()
         conn = null
         super.killProcesses()
@@ -91,7 +98,10 @@ class VpnService : BaseVpnService(),
 //        Logs.d(tunPlatformOptionsJson)
 //        val tunOptions = JSONObject(tunOptionsJson)
 
-        // address & route & MTU ...... use NB4A GUI config
+        return establishTun()
+    }
+
+    fun establishTun(): Int {
         val builder = Builder().setConfigureIntent(SagerNet.configureIntent(this))
             .setSession(getString(R.string.app_name))
             .setMtu(DataStore.mtu)
